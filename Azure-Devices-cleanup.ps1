@@ -14,9 +14,9 @@ if (-Not(Get-Module -ListAvailable -Name "Microsoft.Graph.Identity.DirectoryMana
 Connect-MgGraph -Scopes "Directory.AccessAsUser.All"
 Select-MgProfile -Name beta
 
-$AzureAdregistered = @()
+$AzureHybridAdjoin = @()
 
-$AzureAdregistered = Get-MgDevice -filter "trustType eq 'ServerAd'" -top 500 | Select `
+$AzureHybridAdjoin = Get-MgDevice -filter "trustType eq 'ServerAd'" -all | Select `
 Id,displayname, operatingsystem, accountenabled, profiletype, trusttype,DeviceId, `
 @{N="enrollmentType";Expression={$_.AdditionalProperties.enrollmentType}}, `
 @{N="enrollmentProfileName";Expression={$_.AdditionalProperties.enrollmentProfileName}}, `
@@ -31,7 +31,7 @@ $params = @{
 }
 
 
-foreach ($device in $AzureAdregistered)
+foreach ($device in $AzureHybridAdjoin)
 {
     if($device.AccountEnabled -eq $true)
     {
@@ -54,6 +54,43 @@ Get-MgDevice -DeviceId $device.Id | Select Id,displayname, operatingsystem, acco
 Get-MgDevice -DeviceId $AzureAdregistered[0].Id | Select Id,displayname, operatingsystem, accountenabled, profiletype, trusttype,DeviceId
 #>
 
+
+
+
+
+$AzureAdregistered = @()
+
+$AzureAdregistered = Get-MgDevice -filter "trustType eq 'workplace'" -all | Select `
+Id,displayname, operatingsystem, accountenabled, profiletype, trusttype,DeviceId, `
+@{N="enrollmentType";Expression={$_.AdditionalProperties.enrollmentType}}, `
+@{N="enrollmentProfileName";Expression={$_.AdditionalProperties.enrollmentProfileName}}, `
+@{N="createdDateTime";Expression={(get-date $_.AdditionalProperties.createdDateTime).tostring('yyyy-MM-dd')}}
+
+
+
+
+$params = @{
+    AccountEnabled = $true #
+}
+
+
+foreach ($device in $AzureAdregistered)
+{
+    if($device.AccountEnabled -eq $false)
+    {
+        Update-MgDevice -DeviceId $device.Id -BodyParameter $params
+        if ($?)
+        {
+            Write-host "SUCCESS: $($device.DisplayName) have been changed to $true" -ForegroundColor green
+        }else
+        {
+            write-warning "ERROR : $($device.DisplayName) have NOT been changed " -ForegroundColor red
+    
+        }
+
+    }
+  
+}
 
 
     Disconnect-Graph
